@@ -295,8 +295,9 @@ def handle_ask_line(body, data):
     return body
 
 
-@router.get("/")
+@router.get("/", include_in_schema=False)
 async def root():
+    """Health check endpoint - logs are filtered in uvicorn config"""
     return {"status": "ok"}
 
 gitlab_url = get_settings().get("GITLAB.URL", None)
@@ -309,7 +310,9 @@ app.include_router(router)
 
 
 def start():
-    uvicorn.run(app, host="0.0.0.0", port=3000)
+    from pr_agent.servers.uvicorn_log_config import LOGGING_CONFIG
+
+    uvicorn.run(app, host="0.0.0.0", port=3000, log_config=LOGGING_CONFIG)
 
 
 if __name__ == '__main__':
