@@ -16,10 +16,11 @@ from starlette_context.middleware import RawContextMiddleware
 from pr_agent.agent.pr_agent import PRAgent
 from pr_agent.algo.utils import update_settings_from_args
 from pr_agent.config_loader import get_settings, global_settings
+from pr_agent.git_providers import get_git_provider_with_context
 from pr_agent.git_providers.utils import apply_repo_settings
 from pr_agent.log import LoggingFormat, get_logger, setup_logger
 from pr_agent.secret_providers import get_secret_provider
-from pr_agent.git_providers import get_git_provider_with_context
+from pr_agent.servers.uvicorn_log_config import LOGGING_CONFIG
 
 setup_logger(fmt=LoggingFormat.JSON, level=get_settings().get("CONFIG.LOG_LEVEL", "DEBUG"))
 router = APIRouter()
@@ -296,8 +297,9 @@ def handle_ask_line(body, data):
     return body
 
 
-@router.get("/")
+@router.get("/", include_in_schema=False)
 async def root():
+    """Health check endpoint - logs are filtered in uvicorn config"""
     return {"status": "ok"}
 
 gitlab_url = get_settings().get("GITLAB.URL", None)
@@ -326,7 +328,8 @@ def start():
     except ValueError as e:
         get_logger().warning(f"Invalid PORT environment variable ({e}), using default port 3000")
         port = 3000
-    uvicorn.run(app, host="0.0.0.0", port=port)
+
+    uvicorn.run(app, host="0.0.0.0", port=port, log_config=LOGGING_CONFIG)
 
 
 if __name__ == '__main__':
