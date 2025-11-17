@@ -1,5 +1,6 @@
 import copy
 import json
+import logging
 import re
 from datetime import datetime
 
@@ -19,6 +20,12 @@ from pr_agent.git_providers.utils import apply_repo_settings
 from pr_agent.log import LoggingFormat, get_logger, setup_logger
 from pr_agent.secret_providers import get_secret_provider
 from pr_agent.git_providers import get_git_provider_with_context
+
+
+class HealthCheckFilter(logging.Filter):
+    """Filter out health check requests from access logs"""
+    def filter(self, record: logging.LogRecord) -> bool:
+        return '"GET / HTTP/1.1" 200 OK' not in record.getMessage()
 
 setup_logger(fmt=LoggingFormat.JSON, level=get_settings().get("CONFIG.LOG_LEVEL", "DEBUG"))
 router = APIRouter()
@@ -295,8 +302,9 @@ def handle_ask_line(body, data):
     return body
 
 
-@router.get("/")
+@router.get("/", include_in_schema=False)
 async def root():
+    """Health check endpoint - logs are filtered in uvicorn config"""
     return {"status": "ok"}
 
 gitlab_url = get_settings().get("GITLAB.URL", None)
@@ -309,7 +317,14 @@ app.include_router(router)
 
 
 def start():
-    uvicorn.run(app, host="0.0.0.0", port=3000)
+    from pr_agent.servers.uvicorn_log_config import LOGGING_CONFIG as LOG_CONFIG
+
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=3000,
+        log_config=LOG_CONFIG
+    )
 
 
 if __name__ == '__main__':
