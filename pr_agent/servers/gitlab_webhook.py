@@ -4,6 +4,7 @@ import re
 from datetime import datetime
 
 import uvicorn
+from uvicorn.config import LOGGING_CONFIG
 from fastapi import APIRouter, FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
@@ -19,6 +20,7 @@ from pr_agent.git_providers.utils import apply_repo_settings
 from pr_agent.log import LoggingFormat, get_logger, setup_logger
 from pr_agent.secret_providers import get_secret_provider
 from pr_agent.git_providers import get_git_provider_with_context
+from pr_agent.servers.health_check_filter import configure_health_check_logging
 
 setup_logger(fmt=LoggingFormat.JSON, level=get_settings().get("CONFIG.LOG_LEVEL", "DEBUG"))
 router = APIRouter()
@@ -309,7 +311,31 @@ app.include_router(router)
 
 
 def start():
-    uvicorn.run(app, host="0.0.0.0", port=3000)
+    # Configure uvicorn logging to filter out health check requests
+    import copy
+    log_config = copy.deepcopy(LOGGING_CONFIG)
+
+    # Add our health check filter to the access logger
+    if "filters" not in log_config:
+        log_config["filters"] = {}
+    log_config["filters"]["health_check"] = {
+        "()": "pr_agent.servers.health_check_filter.HealthCheckFilter",
+    }
+
+    if "handlers" not in log_config:
+        log_config["handlers"] = {}
+    if "access" in log_config["handlers"]:
+        if "filters" not in log_config["handlers"]["access"]:
+            log_config["handlers"]["access"]["filters"] = []
+        log_config["handlers"]["access"]["filters"].append("health_check")
+
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=3000,
+        log_config=log_config,
+        access_log=True
+    )
 
 
 if __name__ == '__main__':
