@@ -19,6 +19,7 @@ from pr_agent.git_providers.utils import apply_repo_settings
 from pr_agent.log import LoggingFormat, get_logger, setup_logger
 from pr_agent.secret_providers import get_secret_provider
 from pr_agent.git_providers import get_git_provider_with_context
+from pr_agent.servers.health_check_filter import configure_health_check_logging
 
 setup_logger(fmt=LoggingFormat.JSON, level=get_settings().get("CONFIG.LOG_LEVEL", "DEBUG"))
 router = APIRouter()
@@ -309,6 +310,8 @@ app.include_router(router)
 
 
 def start():
+    # Add filter to silence health check logs
+    configure_health_check_logging()
     uvicorn.run(app, host="0.0.0.0", port=3000)
 
 
