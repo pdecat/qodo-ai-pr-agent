@@ -62,7 +62,7 @@ def load(obj, env=None, silent=True, key=None, filename=None):
                 continue
 
             if not file_path.exists():
-                get_logger().debug(f"Settings file not found: {settings_file}. Skipping it.")
+                get_logger().trace(f"Settings file not found: {settings_file}. Skipping it.")
                 continue
 
             if file_path.stat().st_size > MAX_TOML_SIZE_IN_BYTES:
