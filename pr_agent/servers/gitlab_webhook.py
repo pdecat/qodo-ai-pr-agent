@@ -335,8 +335,9 @@ def handle_ask_line(body, data):
     return body
 
 
-@router.get("/")
+@router.get("/", include_in_schema=False)
 async def root():
+    """Health check endpoint - logs are filtered in uvicorn config"""
     return {"status": "ok"}
 
 gitlab_url = get_settings().get("GITLAB.URL", None)
@@ -355,6 +356,8 @@ def start():
     The server port can be configured via the PORT environment variable.
     Defaults to 3000 if PORT is not set or invalid.
     """
+    from pr_agent.servers.uvicorn_log_config import LOGGING_CONFIG
+
     raw_port = os.environ.get("PORT")
     try:
         port = int(raw_port) if raw_port else 3000
@@ -365,7 +368,7 @@ def start():
     except ValueError as e:
         get_logger().warning(f"Invalid PORT environment variable ({e}), using default port 3000")
         port = 3000
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(app, host="0.0.0.0", port=port, log_config=LOGGING_CONFIG)
 
 
 if __name__ == '__main__':
